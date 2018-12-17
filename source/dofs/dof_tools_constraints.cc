@@ -3468,6 +3468,10 @@ namespace DoFTools
 
 #include "dof_tools_constraints.inst"
 
+template void DoFTools::make_hanging_node_constraints(
+ const  hp::DoFHandler < 2 ,  3 > &,
+ AffineConstraints<double> &);
+
 
 
 DEAL_II_NAMESPACE_CLOSE
