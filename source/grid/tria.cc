@@ -6324,7 +6324,7 @@ namespace internal
                     // underlying the TransfiniteInterpolationManifold
                     // implementation
                     triangulation.vertices[next_unused_vertex] =
-                      quad->center(true, true);
+                      quad->center(true);
                     triangulation.vertices_used[next_unused_vertex] = true;
 
                     // now that we created the right point, make up
