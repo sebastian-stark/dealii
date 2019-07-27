@@ -1029,10 +1029,9 @@ namespace internal
                     cell->index(),
                     active_fe_indices[cell->active_cell_index()]);
             }
-          else if (const dealii::parallel::distributed::Triangulation<dim,
-                                                                      spacedim>
-                     *tr = dynamic_cast<const dealii::parallel::distributed::
-                                          Triangulation<dim, spacedim> *>(
+          else if (const dealii::parallel::Triangulation<dim, spacedim> *tr =
+                     dynamic_cast<
+                       const dealii::parallel::Triangulation<dim, spacedim> *>(
                        &dof_handler.get_triangulation()))
             {
               // For completely distributed meshes, use the function that is
@@ -1709,8 +1708,31 @@ namespace hp
     // decide whether we need a sequential or a parallel shared/distributed
     // policy and attach corresponding callback functions dealing with the
     // transfer of active_fe_indices
-    if (dynamic_cast<const parallel::distributed::Triangulation<dim, spacedim>
-                       *>(&this->get_triangulation()))
+    if (dynamic_cast<const parallel::shared::Triangulation<dim, spacedim> *>(
+          &this->get_triangulation()) != nullptr)
+      {
+        policy =
+          std_cxx14::make_unique<internal::DoFHandlerImplementation::Policy::
+                                   ParallelShared<DoFHandler<dim, spacedim>>>(
+            *this);
+
+        // partitioning signals
+        tria_listeners.push_back(this->tria->signals.pre_partition.connect(
+          std::bind(&internal::hp::DoFHandlerImplementation::Implementation::
+                      ensure_absence_of_future_fe_indices<dim, spacedim>,
+                    std::ref(*this))));
+
+        // refinement signals
+        tria_listeners.push_back(this->tria->signals.pre_refinement.connect(
+          std::bind(&DoFHandler<dim, spacedim>::pre_active_fe_index_transfer,
+                    std::ref(*this))));
+        tria_listeners.push_back(this->tria->signals.post_refinement.connect(
+          std::bind(&DoFHandler<dim, spacedim>::post_active_fe_index_transfer,
+                    std::ref(*this))));
+      }
+    else if (dynamic_cast<
+               const parallel::distributed::Triangulation<dim, spacedim> *>(
+               &this->get_triangulation()))
       {
         policy = std_cxx14::make_unique<
           internal::DoFHandlerImplementation::Policy::ParallelDistributed<
@@ -1752,27 +1774,48 @@ namespace hp
                         post_distributed_serialization_of_active_fe_indices,
                       std::ref(*this))));
       }
-    else if (dynamic_cast<const parallel::shared::Triangulation<dim, spacedim>
-                            *>(&this->get_triangulation()) != nullptr)
+    else if (dynamic_cast<const parallel::Triangulation<dim, spacedim> *>(
+               &this->get_triangulation()))
       {
         policy =
           std_cxx14::make_unique<internal::DoFHandlerImplementation::Policy::
-                                   ParallelShared<DoFHandler<dim, spacedim>>>(
-            *this);
+                                   Parallel<DoFHandler<dim, spacedim>>>(*this);
 
-        // partitioning signals
-        tria_listeners.push_back(this->tria->signals.pre_partition.connect(
-          std::bind(&internal::hp::DoFHandlerImplementation::Implementation::
-                      ensure_absence_of_future_fe_indices<dim, spacedim>,
-                    std::ref(*this))));
+        // repartitioning signals
+        tria_listeners.push_back(
+          this->tria->signals.pre_distributed_repartition.connect(
+            std::bind(&internal::hp::DoFHandlerImplementation::Implementation::
+                        ensure_absence_of_future_fe_indices<dim, spacedim>,
+                      std::ref(*this))));
+        tria_listeners.push_back(
+          this->tria->signals.pre_distributed_repartition.connect(std::bind(
+            &DoFHandler<dim,
+                        spacedim>::pre_distributed_active_fe_index_transfer,
+            std::ref(*this))));
+        tria_listeners.push_back(
+          this->tria->signals.post_distributed_repartition.connect(std::bind(
+            &DoFHandler<dim,
+                        spacedim>::post_distributed_active_fe_index_transfer,
+            std::ref(*this))));
 
         // refinement signals
-        tria_listeners.push_back(this->tria->signals.pre_refinement.connect(
-          std::bind(&DoFHandler<dim, spacedim>::pre_active_fe_index_transfer,
-                    std::ref(*this))));
-        tria_listeners.push_back(this->tria->signals.post_refinement.connect(
-          std::bind(&DoFHandler<dim, spacedim>::post_active_fe_index_transfer,
-                    std::ref(*this))));
+        tria_listeners.push_back(
+          this->tria->signals.pre_distributed_refinement.connect(std::bind(
+            &DoFHandler<dim,
+                        spacedim>::pre_distributed_active_fe_index_transfer,
+            std::ref(*this))));
+        tria_listeners.push_back(
+          this->tria->signals.post_distributed_refinement.connect(std::bind(
+            &DoFHandler<dim,
+                        spacedim>::post_distributed_active_fe_index_transfer,
+            std::ref(*this))));
+
+        // serialization signals
+        tria_listeners.push_back(
+          this->tria->signals.post_distributed_save.connect(
+            std::bind(&DoFHandler<dim, spacedim>::
+                        post_distributed_serialization_of_active_fe_indices,
+                      std::ref(*this))));
       }
     else
       {

@@ -30,6 +30,11 @@ for (deal_II_dimension : DIMENSIONS; deal_II_space_dimension : SPACE_DIMENSIONS)
           template class Sequential<
             dealii::hp::DoFHandler<deal_II_dimension, deal_II_space_dimension>>;
 
+          template class Parallel<
+            dealii::DoFHandler<deal_II_dimension, deal_II_space_dimension>>;
+          template class Parallel<
+            dealii::hp::DoFHandler<deal_II_dimension, deal_II_space_dimension>>;
+
           template class ParallelShared<
             dealii::DoFHandler<deal_II_dimension, deal_II_space_dimension>>;
           template class ParallelShared<

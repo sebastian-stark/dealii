@@ -99,6 +99,15 @@ namespace internal
                               dealii::hp::DoFHandler<dim, spacedim>> *>(
                &policy))
       policy_name = "Policy::ParallelShared<";
+    else if (dynamic_cast<
+               const typename dealii::internal::DoFHandlerImplementation::
+                 Policy::Parallel<dealii::DoFHandler<dim, spacedim>> *>(
+               &policy) ||
+             dynamic_cast<
+               const typename dealii::internal::DoFHandlerImplementation::
+                 Policy::Parallel<dealii::hp::DoFHandler<dim, spacedim>> *>(
+               &policy))
+      policy_name = "Policy::Parallel<";
     else
       AssertThrow(false, ExcNotImplemented());
     policy_name += Utilities::int_to_string(dim) + "," +
@@ -847,7 +856,7 @@ DoFHandler<dim, spacedim>::DoFHandler(const Triangulation<dim, spacedim> &tria)
   , faces(nullptr)
   , mg_faces(nullptr)
 {
-  // decide whether we need a sequential or a parallel distributed policy
+  // decide which policy to use for DoFHandler
   if (dynamic_cast<const parallel::shared::Triangulation<dim, spacedim> *>(
         &tria) != nullptr)
     policy =
@@ -856,15 +865,22 @@ DoFHandler<dim, spacedim>::DoFHandler(const Triangulation<dim, spacedim> &tria)
         *this);
   else if (dynamic_cast<
              const parallel::distributed::Triangulation<dim, spacedim> *>(
-             &tria) == nullptr)
-    policy =
-      std_cxx14::make_unique<internal::DoFHandlerImplementation::Policy::
-                               Sequential<DoFHandler<dim, spacedim>>>(*this);
-  else
+             &tria) != nullptr)
     policy =
       std_cxx14::make_unique<internal::DoFHandlerImplementation::Policy::
                                ParallelDistributed<DoFHandler<dim, spacedim>>>(
         *this);
+  else if (dynamic_cast<const parallel::Triangulation<dim, spacedim> *>(
+             &tria) != nullptr)
+    policy =
+      std_cxx14::make_unique<internal::DoFHandlerImplementation::Policy::
+                               Parallel<DoFHandler<dim, spacedim>>>(*this);
+  else if (dynamic_cast<const Triangulation<dim, spacedim> *>(&tria) != nullptr)
+    policy =
+      std_cxx14::make_unique<internal::DoFHandlerImplementation::Policy::
+                               Sequential<DoFHandler<dim, spacedim>>>(*this);
+  else
+    Assert(false, ExcInternalError());
 }
 
 
@@ -899,7 +915,14 @@ DoFHandler<dim, spacedim>::initialize(const Triangulation<dim, spacedim> &t,
   faces                      = nullptr;
   number_cache.n_global_dofs = 0;
 
-  // decide whether we need a sequential or a parallel distributed policy
+  // decide which policy to use for DoFHandler;
+  // use ParallelDistributed policy for anything derived from
+  // parallel::Triangulation other than parallel::shared::Triangulation
+  // [this is done in view of possible distributed Triangulations
+  // which are not based on p4est, but which provide similar functionality
+  // as parallel::distributed::Triangulation, such that the ParallelDistributed
+  // policy still applies except for multigrid (where the policy explicitly
+  // uses the p4est forest)]
   if (dynamic_cast<const parallel::shared::Triangulation<dim, spacedim> *>(
         &t) != nullptr)
     policy =
@@ -913,10 +936,17 @@ DoFHandler<dim, spacedim>::initialize(const Triangulation<dim, spacedim> &t,
       std_cxx14::make_unique<internal::DoFHandlerImplementation::Policy::
                                ParallelDistributed<DoFHandler<dim, spacedim>>>(
         *this);
-  else
+  else if (dynamic_cast<const parallel::Triangulation<dim, spacedim> *>(&t) !=
+           nullptr)
+    policy =
+      std_cxx14::make_unique<internal::DoFHandlerImplementation::Policy::
+                               Parallel<DoFHandler<dim, spacedim>>>(*this);
+  else if (dynamic_cast<const Triangulation<dim, spacedim> *>(&t) != nullptr)
     policy =
       std_cxx14::make_unique<internal::DoFHandlerImplementation::Policy::
                                Sequential<DoFHandler<dim, spacedim>>>(*this);
+  else
+    Assert(false, ExcInternalError());
 
   distribute_dofs(fe);
 }
@@ -1249,10 +1279,13 @@ DoFHandler<dim, spacedim>::distribute_dofs(
 
   // initialize the block info object
   // only if this is a sequential
-  // triangulation. it doesn't work
-  // correctly yet if it is parallel
-  if (dynamic_cast<const parallel::distributed::Triangulation<dim, spacedim> *>(
-        &*tria) == nullptr)
+  // triangulation or a parallel::shared triangulation.
+  // It doesn't work
+  // correctly yet for distributed parallel triangulations
+  if ((dynamic_cast<const parallel::Triangulation<dim, spacedim> *>(&*tria) ==
+       nullptr) ||
+      (dynamic_cast<const parallel::shared::Triangulation<dim, spacedim> *>(
+         &*tria) != nullptr))
     block_info_object.initialize(*this, false, true);
 }
 
@@ -1291,10 +1324,13 @@ DoFHandler<dim, spacedim>::distribute_mg_dofs()
 
   // initialize the block info object
   // only if this is a sequential
-  // triangulation. it doesn't work
-  // correctly yet if it is parallel
-  if (dynamic_cast<const parallel::distributed::Triangulation<dim, spacedim> *>(
-        &*tria) == nullptr)
+  // triangulation or a parallel::shared triangulation.
+  // It doesn't work
+  // correctly yet for distributed parallel triangulations
+  if ((dynamic_cast<const parallel::Triangulation<dim, spacedim> *>(&*tria) ==
+       nullptr) ||
+      (dynamic_cast<const parallel::shared::Triangulation<dim, spacedim> *>(
+         &*tria) != nullptr))
     block_info_object.initialize(*this, true, false);
 }
 
@@ -1352,8 +1388,9 @@ DoFHandler<dim, spacedim>::renumber_dofs(
                new_numbers.size() == n_locally_owned_dofs(),
              ExcMessage("Incorrect size of the input array."));
     }
-  else if (dynamic_cast<
-             const parallel::distributed::Triangulation<dim, spacedim> *>(
+  // assume that any parallel triangulation except parallel::shared
+  // is a distributed one
+  else if (dynamic_cast<const parallel::Triangulation<dim, spacedim> *>(
              &*tria) != nullptr)
     {
       AssertDimension(new_numbers.size(), n_locally_owned_dofs());

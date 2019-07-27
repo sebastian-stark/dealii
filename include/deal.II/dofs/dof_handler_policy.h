@@ -150,14 +150,66 @@ namespace internal
       };
 
 
+      /**
+       * This class implements the basic policy for operations when we use a
+       * triangulation derived from parallel::Triangulation object.
+       *
+       * @todo Currently only distribute_dofs() and renumber_dofs() are implemented
+       * in a way that they can be used for arbitrary parallel::Triangulation
+       * objects. A general implementation of the multigrid functionality would
+       * be desirable (currently, there are only special implementations for
+       * parallel::shared::Triangulation and
+       * parallel::distributed::Triangulation)
+       */
+      template <class DoFHandlerType>
+      class Parallel : public PolicyBase<DoFHandlerType::dimension,
+                                         DoFHandlerType::space_dimension>
+      {
+      public:
+        /**
+         * Constructor.
+         * @param dof_handler The DoFHandler object upon which this
+         *   policy class is supposed to work.
+         */
+        Parallel(DoFHandlerType &dof_handler);
+
+        // documentation is inherited
+        virtual NumberCache
+        distribute_dofs() const override;
+
+        /**
+         * This function is not yet implemented.
+         */
+        virtual std::vector<NumberCache>
+        distribute_mg_dofs() const override;
+
+        // documentation is inherited
+        virtual NumberCache
+        renumber_dofs(const std::vector<types::global_dof_index> &new_numbers)
+          const override;
+
+        /**
+         * This function is not yet implemented.
+         */
+        virtual NumberCache
+        renumber_mg_dofs(const unsigned int level,
+                         const std::vector<types::global_dof_index>
+                           &new_numbers) const override;
+
+      protected:
+        /**
+         * The DoFHandler object on which this policy object works.
+         */
+        SmartPointer<DoFHandlerType> dof_handler;
+      };
+
 
       /**
        * This class implements the policy for operations when we use a
        * parallel::shared::Triangulation object.
        */
       template <class DoFHandlerType>
-      class ParallelShared : public PolicyBase<DoFHandlerType::dimension,
-                                               DoFHandlerType::space_dimension>
+      class ParallelShared : public Parallel<DoFHandlerType>
       {
       public:
         /**
@@ -178,9 +230,7 @@ namespace internal
         virtual NumberCache
         distribute_dofs() const override;
 
-        /**
-         * This function is not yet implemented.
-         */
+        // documentation is inherited
         virtual std::vector<NumberCache>
         distribute_mg_dofs() const override;
 
@@ -197,17 +247,13 @@ namespace internal
         renumber_dofs(const std::vector<types::global_dof_index> &new_numbers)
           const override;
 
-        // documentation is inherited
+        /**
+         * This function is not yet implemented.
+         */
         virtual NumberCache
         renumber_mg_dofs(const unsigned int level,
                          const std::vector<types::global_dof_index>
                            &new_numbers) const override;
-
-      private:
-        /**
-         * The DoFHandler object on which this policy object works.
-         */
-        SmartPointer<DoFHandlerType> dof_handler;
       };
 
 
@@ -216,9 +262,7 @@ namespace internal
        * parallel::distributed::Triangulation object.
        */
       template <class DoFHandlerType>
-      class ParallelDistributed
-        : public PolicyBase<DoFHandlerType::dimension,
-                            DoFHandlerType::space_dimension>
+      class ParallelDistributed : public Parallel<DoFHandlerType>
       {
       public:
         /**
@@ -229,29 +273,14 @@ namespace internal
         ParallelDistributed(DoFHandlerType &dof_handler);
 
         // documentation is inherited
-        virtual NumberCache
-        distribute_dofs() const override;
-
-        // documentation is inherited
         virtual std::vector<NumberCache>
         distribute_mg_dofs() const override;
-
-        // documentation is inherited
-        virtual NumberCache
-        renumber_dofs(const std::vector<types::global_dof_index> &new_numbers)
-          const override;
 
         // documentation is inherited
         virtual NumberCache
         renumber_mg_dofs(const unsigned int level,
                          const std::vector<types::global_dof_index>
                            &new_numbers) const override;
-
-      private:
-        /**
-         * The DoFHandler object on which this policy object works.
-         */
-        SmartPointer<DoFHandlerType> dof_handler;
       };
     } // namespace Policy
   }   // namespace DoFHandlerImplementation
