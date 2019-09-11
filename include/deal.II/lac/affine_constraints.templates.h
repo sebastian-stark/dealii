@@ -2087,6 +2087,7 @@ namespace internal
   // this is an operation that is different for all vector types and so we
   // need a few overloads
 #ifdef DEAL_II_WITH_TRILINOS
+  inline
   void
   import_vector_with_ghost_elements(
     const TrilinosWrappers::MPI::Vector &vec,
@@ -2110,6 +2111,7 @@ namespace internal
 #endif
 
 #ifdef DEAL_II_WITH_PETSC
+  inline
   void
   import_vector_with_ghost_elements(
     const PETScWrappers::MPI::Vector &vec,
