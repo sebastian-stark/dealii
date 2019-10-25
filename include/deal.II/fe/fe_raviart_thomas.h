@@ -174,6 +174,37 @@ public:
   virtual std::size_t
   memory_consumption() const override;
 
+  /**
+   * @copydoc FiniteElement::compare_for_domination()
+   */
+  virtual FiniteElementDomination::Domination
+  compare_for_domination(const FiniteElement<dim> &fe_other,
+                         const unsigned int codim = 0) const override final;
+
+  /**
+   * @copydoc FiniteElement::hp_vertex_dof_identities()
+   */
+  virtual std::vector<std::pair<unsigned int, unsigned int>>
+  hp_vertex_dof_identities(
+    const FiniteElement<dim, dim> &fe_other) const override;
+
+  /**
+   * Same as hp_vertex_dof_indices(), except that the function treats degrees
+   * of freedom on lines.
+   */
+  virtual std::vector<std::pair<unsigned int, unsigned int>>
+  hp_line_dof_identities(
+    const FiniteElement<dim, dim> &fe_other) const override;
+
+  /**
+   * Same as hp_vertex_dof_indices(), except that the function treats degrees
+   * of freedom on quads.
+   */
+  virtual std::vector<std::pair<unsigned int, unsigned int>>
+  hp_quad_dof_identities(
+    const FiniteElement<dim, dim> &fe_other) const override;
+
+
 private:
   /**
    * Only for internal use. Its full name is @p get_dofs_per_object_vector

@@ -25,6 +25,7 @@
 
 #include <deal.II/fe/fe.h>
 #include <deal.II/fe/fe_raviart_thomas.h>
+#include <deal.II/fe/fe_nothing.h>
 #include <deal.II/fe/fe_tools.h>
 #include <deal.II/fe/fe_values.h>
 #include <deal.II/fe/mapping.h>
@@ -530,8 +531,87 @@ FE_RaviartThomas<dim>::memory_consumption() const
   return 0;
 }
 
+template <int dim>
+FiniteElementDomination::Domination
+FE_RaviartThomas<dim>::compare_for_domination(
+  const FiniteElement<dim> &/*fe_other*/,
+  const unsigned int        codim) const
+{
+  Assert(codim <= dim, ExcImpossibleInDim(dim));
+  (void)codim;
+
+  return FiniteElementDomination::no_requirements;
+}
+
+template <int dim>
+std::vector<std::pair<unsigned int, unsigned int>>
+FE_RaviartThomas<dim>::hp_vertex_dof_identities(
+  const FiniteElement<dim, dim> &/*fe_other*/) const
+{
+ return std::vector<std::pair<unsigned int, unsigned int>>();
+}
+
+template <int dim>
+std::vector<std::pair<unsigned int, unsigned int>>
+FE_RaviartThomas<dim>::hp_line_dof_identities(
+  const FiniteElement<dim, dim> &fe_other) const
+{
+ if (const FE_RaviartThomas<dim> *fe_q_other =
+       dynamic_cast<const FE_RaviartThomas<dim> *>(
+         &fe_other))
+   {
+     std::vector<std::pair<unsigned int, unsigned int>> identities;
+     for(unsigned int i = 0; i < fe_other.dofs_per_line; ++i)
+       identities.push_back(std::make_pair(i,i));
+     return identities;
+   }
+ else if (dynamic_cast<const FE_Nothing<dim> *>(&fe_other) != nullptr)
+   {
+     return std::vector<std::pair<unsigned int, unsigned int>>();
+   }
+ else if (fe_other.dofs_per_line == 0)
+   {
+     return std::vector<std::pair<unsigned int, unsigned int>>();
+   }
+ else
+   {
+     Assert(false, ExcNotImplemented());
+     return std::vector<std::pair<unsigned int, unsigned int>>();
+  }
+
+ return std::vector<std::pair<unsigned int, unsigned int>>();
+}
 
 
+template <int dim>
+std::vector<std::pair<unsigned int, unsigned int>>
+FE_RaviartThomas<dim>::hp_quad_dof_identities(
+  const FiniteElement<dim, dim> &fe_other) const
+{
+ if (const FE_RaviartThomas<dim> *fe_q_other =
+       dynamic_cast<const FE_RaviartThomas<dim> *>(
+         &fe_other))
+   {
+     std::vector<std::pair<unsigned int, unsigned int>> identities;
+     for(unsigned int i = 0; i < fe_other.dofs_per_quad; ++i)
+       identities.push_back(std::make_pair(i,i));
+     return identities;
+   }
+ else if (dynamic_cast<const FE_Nothing<dim> *>(&fe_other) != nullptr)
+   {
+     return std::vector<std::pair<unsigned int, unsigned int>>();
+   }
+ else if (fe_other.dofs_per_quad == 0)
+   {
+     return std::vector<std::pair<unsigned int, unsigned int>>();
+   }
+ else
+   {
+     Assert(false, ExcNotImplemented());
+     return std::vector<std::pair<unsigned int, unsigned int>>();
+  }
+ return std::vector<std::pair<unsigned int, unsigned int>>();
+}
 // explicit instantiations
 #include "fe_raviart_thomas.inst"
 
