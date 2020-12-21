@@ -109,16 +109,12 @@ InterGridMap<MeshType>::set_mapping(const cell_iterator &src_cell,
   // recurse further into the hierarchy
   if (src_cell->has_children() && dst_cell->has_children())
     {
-      Assert(src_cell->n_children() ==
-               GeometryInfo<MeshType::dimension>::max_children_per_cell,
-             ExcNotImplemented());
-      Assert(dst_cell->n_children() ==
-               GeometryInfo<MeshType::dimension>::max_children_per_cell,
+      Assert(src_cell->n_children() == dst_cell->n_children(),
              ExcNotImplemented());
       Assert(src_cell->refinement_case() == dst_cell->refinement_case(),
              ExcNotImplemented());
       for (unsigned int c = 0;
-           c < GeometryInfo<MeshType::dimension>::max_children_per_cell;
+           c < src_cell->n_children();
            ++c)
         set_mapping(src_cell->child(c), dst_cell->child(c));
     }
