@@ -417,7 +417,7 @@ namespace internal
           // example, the hp/crash_15 testcase): if we have
           // FESystem(FE_Q(2),FE_DGQ(i)) elements for a bunch of values 'i',
           // then we should be able to handle this because we can simply unify
-          // *all* dofs, not only a some. so what we do is to first treat all
+          // *all* dofs, not only some. so what we do is to first treat all
           // pairs of finite elements that have *identical* dofs, and then only
           // deal with those that are not identical of which we can handle at
           // most 2
@@ -435,7 +435,7 @@ namespace internal
                     line->n_active_fe_indices();
 
                   // do a first loop over all sets of dofs and do identity
-                  // uniquification
+                  // unification
                   const unsigned int n_active_fe_indices =
                     line->n_active_fe_indices();
                   for (unsigned int f = 0; f < n_active_fe_indices; ++f)
@@ -628,12 +628,7 @@ namespace internal
                   // are two, then we need to deal with them here. if there are
                   // more, then we punt, as described in the paper (and
                   // mentioned above)
-                  // TODO: The check for 'dim==2' was inserted by intuition. It
-                  // fixes
-                  // the previous problems with step-27 in 3D. But an
-                  // explanation for this is still required, and what we do here
-                  // is not what we describe in the paper!.
-                  if ((unique_sets_of_dofs == 2) && (dim == 2))
+                  if (unique_sets_of_dofs == 2)
                     {
                       const std::set<unsigned int> fe_indices =
                         line->get_active_fe_indices();
@@ -1403,12 +1398,7 @@ namespace internal
                   // are two, then we need to deal with them here. if there are
                   // more, then we punt, as described in the paper (and
                   // mentioned above)
-                  // TODO: The check for 'dim==2' was inserted by intuition. It
-                  // fixes
-                  // the previous problems with step-27 in 3D. But an
-                  // explanation for this is still required, and what we do here
-                  // is not what we describe in the paper!.
-                  if ((unique_sets_of_dofs == 2) && (dim == 2))
+                  if (unique_sets_of_dofs == 2)
                     {
                       const std::set<unsigned int> fe_indices =
                         line->get_active_fe_indices();
